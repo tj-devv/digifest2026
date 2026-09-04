@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find the Badge — Live Hunt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --bg: #17173A;
+    --bg-alt: #232358;
+    --panel: #1D1D48;
+    --ink: #F1EEFB;
+    --ink-dim: #B9B4DC;
+    --gold: #FFC857;
+    --coral: #FF6B6B;
+    --teal: #4ECDC4;
+    --violet: #B090FF;
+    --line: #3A3A73;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    height: 100%;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1, h2, .display {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  button, input {
+    font-family: inherit;
+    font-size: 1rem;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* ---------- shared "sticker" building blocks ---------- */
+
+  .sticker {
+    background: var(--panel);
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 7px 7px 0 var(--coral);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    padding: 0.85em 1.4em;
+    border-radius: 14px;
+    border: 3px solid var(--ink);
+    background: var(--gold);
+    color: #1B1B1B;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 5px 5px 0 var(--ink);
+    transition: transform 120ms ease;
+  }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn.secondary {
+    background: var(--bg-alt);
+    color: var(--ink);
+  }
+  .btn.danger {
+    background: var(--coral);
+    color: #1B1B1B;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ---------- screens ---------- */
+
+  .screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+  }
+  .screen.active { display: flex; }
+
+  /* Landing */
+  #screen-landing {
+    align-items: center;
+    justify-content: center;
+    padding: 6vh 5vw;
+    text-align: center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,200,87,0.10), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,107,107,0.10), transparent 40%),
+      var(--bg);
+  }
+  #screen-landing .sticker {
+    max-width: 420px;
+    width: 100%;
+    padding: 2.2rem 1.8rem;
+  }
+  #screen-landing .eyebrow-icon {
+    font-size: 2.4rem;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  #screen-landing h1 {
+    font-size: clamp(1.6rem, 6vw, 2.1rem);
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+  }
+  #screen-landing p {
+    color: var(--ink-dim);
+    line-height: 1.5;
+    margin: 0 0 1.4rem;
+    max-width: 34ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #name-input {
+    width: 100%;
+    padding: 0.85em 1em;
+    border-radius: 12px;
+    border: 3px solid var(--ink);
+    background: var(--bg);
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+  #name-input::placeholder { color: var(--ink-dim); }
+
+  /* Game */
+  #screen-game { position: relative; }
+  #game-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    background: var(--bg-alt);
+    border-bottom: 3px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  #game-topbar .title {
+    font-size: 1.05rem;
+  }
+  #status-pill {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35em 0.8em;
+    border-radius: 999px;
+    background: var(--teal);
+    color: #0B2A27;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+  }
+  #status-pill .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #0B2A27;
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  #scene-wrap {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #10102A;
+    display: flex;
+    justify-content: center;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+  #scene-wrap svg {
+    display: block;
+    cursor: crosshair;
+  }
+
+  #target-logo { cursor: pointer; }
+  #target-logo:focus-visible { outline: none; }
+  #target-logo .hit-area { fill: transparent; }
+
+  #hint-bar {
+    padding: 0.6rem 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    background: var(--bg-alt);
+    border-top: 3px solid var(--line);
+  }
+
+  /* Organizer gear */
+  #organizer-toggle {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--bg-alt);
+    border: 2px solid var(--line);
+    color: var(--ink-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    z-index: 20;
+    opacity: 0.55;
+  }
+  #organizer-panel {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,30,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    padding: 5vw;
+  }
+  #organizer-panel.active { display: flex; }
+  #organizer-panel .sticker {
+    max-width: 420px;
+    width: 100%;
+    padding: 1.6rem;
+    max-height: 85vh;
+    overflow: auto;
+  }
+  #organizer-panel h2 { font-size: 1.15rem; margin-bottom: 0.8rem; }
+  #organizer-panel label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+    margin: 0.9rem 0 0.3rem;
+  }
+  #organizer-panel input[type="text"] {
+    width: 100%;
+    padding: 0.6em 0.7em;
+    border-radius: 10px;
+    border: 2px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+  }
+  #qrcode {
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-flex;
+    margin-top: 0.8rem;
+  }
+  #organizer-panel .row {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+    flex-wrap: wrap;
+  }
+  #organizer-panel .fine-print {
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    line-height: 1.4;
+    margin-top: 1rem;
+  }
+  #organizer-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+
+  /* Win / already-found overlay */
+  #screen-result {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 6vh 6vw;
+    position: relative;
+    overflow: hidden;
+  }
+  #screen-result.win { background: radial-gradient(circle at 50% 20%, #2c2c66, var(--bg) 70%); }
+  #screen-result .trophy { font-size: 3.2rem; display: block; margin-bottom: 0.6rem; }
+  #screen-result h1 { font-size: clamp(1.5rem, 7vw, 2.2rem); margin-bottom: 0.5rem; }
+  #screen-result p { color: var(--ink-dim); max-width: 32ch; margin: 0 auto; line-height: 1.5; }
+
+  .confetti {
+    position: absolute;
+    top: -10px;
+    width: 9px;
+    height: 14px;
+    opacity: 0.9;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(540deg); opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .confetti { display: none; }
+    #status-pill .dot { animation: none; }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== LANDING ===================== -->
+  <section id="screen-landing" class="screen active">
+    <div class="sticker">
+      <span class="eyebrow-icon" aria-hidden="true">🔎</span>
+      <h1>Find the Badge</h1>
+      <p>One badge is hidden somewhere in the scene. First person to spot and tap it wins. Scroll, pinch to zoom, and look close.</p>
+      <label class="sr-only" for="name-input">Your name</label>
+      <input id="name-input" type="text" placeholder="Your name" autocomplete="off" maxlength="24">
+      <button class="btn" id="start-btn" style="width:100%;">Start hunting</button>
+    </div>
+  </section>
+
+  <!-- ===================== GAME ===================== -->
+  <section id="screen-game" class="screen">
+    <div id="game-topbar">
+      <span class="title display">Find the Badge</span>
+      <span id="status-pill"><span class="dot" aria-hidden="true"></span><span id="status-text">Still hidden</span></span>
+    </div>
+    <div id="scene-wrap">
+      <svg id="scene-svg" width="1000" height="1500" viewBox="0 0 1000 1500" role="img" aria-label="A busy scattered pattern of shapes. One hidden badge shape is the winning target.">
+        <!-- filled by JS -->
+      </svg>
+    </div>
+    <div id="hint-bar">Tip: the badge is a hexagon with a star inside — not just any shiny shape.</div>
+  </section>
+
+  <!-- ===================== RESULT ===================== -->
+  <section id="screen-result" class="screen">
+    <span class="trophy" id="result-emoji" aria-hidden="true">🏆</span>
+    <h1 id="result-title">—</h1>
+    <p id="result-sub">—</p>
+  </section>
+
+  <!-- ===================== ORGANIZER GEAR ===================== -->
+  <button id="organizer-toggle" aria-label="Organizer settings">⚙</button>
+  <div id="organizer-panel">
+    <div class="sticker">
+      <button id="organizer-close" aria-label="Close organizer settings">✕</button>
+      <h2>Organizer setup</h2>
+
+      <label for="qr-url-input">Link to encode in the QR code</label>
+      <input type="text" id="qr-url-input">
+      <div id="qrcode"></div>
+      <div class="row">
+        <button class="btn secondary" id="regen-qr-btn">Update QR</button>
+      </div>
+
+      <div class="row">
+        <button class="btn danger" id="reset-btn">Reset round (clear winner)</button>
+      </div>
+
+      <p class="fine-print">
+        Publish/share this artifact first, then paste the public link above so the QR points participants to the live game. "Reset round" clears the shared winner so you can run it again. Because the win state is shared storage, it's visible to everyone who opens this link — don't put anything sensitive here.
+      </p>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONFIG — organizers can tweak these before the event
+     ============================================================ */
+  var SEED = 1337;              // fixed seed -> identical scene for every participant
+  var DECOY_COUNT = 240;        // number of non-winning shapes
+  var LOGO_X = 418, LOGO_Y = 1122;  // fixed position of the winning badge
+  var WINNER_KEY = "waldo:winner:v1";
+
+  var PALETTE = ["#FFC857","#FF6B6B","#4ECDC4","#B090FF","#FF9F6B","#6BCB77","#FFD93D","#9AD0F5"];
+
+  /* ============================================================
+     Seeded PRNG so every phone renders the exact same scene
+     ============================================================ */
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rand = mulberry32(SEED);
+
+  /* ============================================================
+     Shape drawing helpers (all return SVG markup strings)
+     ============================================================ */
+  function starPoints(cx, cy, r){
+    var pts = [];
+    for (var i = 0; i < 10; i++){
+      var rad = (i % 2 === 0) ? r : r * 0.45;
+      var ang = (Math.PI / 5) * i - Math.PI / 2;
+      pts.push((cx + rad * Math.cos(ang)).toFixed(1) + "," + (cy + rad * Math.sin(ang)).toFixed(1));
+    }
+    return pts.join(" ");
+  }
+  function hexPoints(cx, cy, r){
+    var pts = [];
+    for (var i = 0; i < 6; i++){
+      var ang = (Math.PI / 3) * i - Math.PI / 2;
+      pts.push((cx + r * Math.cos(ang)).toFixed(1) + "," + (cy + r * Math.sin(ang)).toFixed(1));
+    }
+    return pts.join(" ");
+  }
+  function diamondPoints(cx, cy, r){
+    return [cx+","+(cy-r), (cx+r)+","+cy, cx+","+(cy+r), (cx-r)+","+cy].join(" ");
+  }
+  function boltPath(cx, cy, r){
+    var s = r / 20;
+    return "M " + (cx - 6*s) + " " + (cy - 14*s) +
+           " L " + (cx + 4*s) + " " + (cy - 2*s) +
+           " L " + (cx - 2*s) + " " + (cy - 2*s) +
+           " L " + (cx + 6*s) + " " + (cy + 14*s) +
+           " L " + (cx - 4*s) + " " + (cy + 2*s) +
+           " L " + (cx + 2*s) + " " + (cy + 2*s) + " Z";
+  }
+
+  function decoyMarkup(cx, cy, r, rot, color, opacity, kind){
+    var t = "rotate(" + rot.toFixed(1) + " " + cx.toFixed(1) + " " + cy.toFixed(1) + ")";
+    switch(kind){
+      case 0: return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+color+'" opacity="'+opacity+'"/>';
+      case 1: return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="3" opacity="'+opacity+'"/>';
+      case 2: return '<polygon points="'+starPoints(cx,cy,r)+'" fill="'+color+'" opacity="'+opacity+'" transform="'+t+'"/>';
+      case 3: return '<polygon points="'+diamondPoints(cx,cy,r)+'" fill="'+color+'" opacity="'+opacity+'" transform="'+t+'"/>';
+      case 4: return '<path d="'+boltPath(cx,cy,r)+'" fill="'+color+'" opacity="'+opacity+'" transform="'+t+'"/>';
+      default: return '<polygon points="'+diamondPoints(cx,cy,r)+'" fill="none" stroke="'+color+'" stroke-width="3" opacity="'+opacity+'" transform="'+t+'"/>';
+    }
+  }
+
+  function buildScene(){
+    var svg = document.getElementById("scene-svg");
+    var W = 1000, H = 1500;
+    var parts = [];
+
+    // soft background blobs for depth
+    parts.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#10102A"/>');
+    parts.push('<circle cx="180" cy="260" r="260" fill="#1B1B45" opacity="0.6"/>');
+    parts.push('<circle cx="820" cy="1180" r="320" fill="#1B1B45" opacity="0.6"/>');
+    parts.push('<circle cx="760" cy="300" r="200" fill="#221E52" opacity="0.5"/>');
+
+    // decoy shapes, deterministic via seeded PRNG
+    var margin = 40;
+    for (var i = 0; i < DECOY_COUNT; i++){
+      var cx = margin + rand() * (W - margin * 2);
+      var cy = margin + rand() * (H - margin * 2);
+      // keep decoys away from the exact logo cell to reduce total overlap
+      if (Math.abs(cx - LOGO_X) < 55 && Math.abs(cy - LOGO_Y) < 55) continue;
+      var r = 10 + rand() * 20;
+      var rot = rand() * 360;
+      var color = PALETTE[Math.floor(rand() * PALETTE.length)];
+      var opacity = (0.5 + rand() * 0.5).toFixed(2);
+      var kind = Math.floor(rand() * 6);
+      parts.push(decoyMarkup(cx, cy, r, rot, color, opacity, kind));
+    }
+
+    svg.insertAdjacentHTML("beforeend", parts.join(""));
+
+    // The winning badge target.
+    // ORGANIZER: to use your real logo, replace the two shapes inside
+    // #target-logo (keep the id, the transform position, and the
+    // invisible .hit-area circle for mobile tap forgiveness).
+    var logo =
+      '<g id="target-logo" tabindex="0" role="button" aria-label="Hidden badge — tap to claim the win" transform="translate('+LOGO_X+','+LOGO_Y+')">' +
+        '<circle class="hit-area" cx="0" cy="0" r="34"/>' +
+        '<polygon points="'+hexPoints(0,0,26)+'" fill="#FFC857" stroke="#17173A" stroke-width="3"/>' +
+        '<polygon points="'+starPoints(0,0,13)+'" fill="#17173A"/>' +
+      '</g>';
+    svg.insertAdjacentHTML("beforeend", logo);
+  }
+
+  /* ============================================================
+     Shared storage helpers
+     ============================================================ */
+  async function getWinner(){
+    try {
+      var res = await window.storage.get(WINNER_KEY, true);
+      return res ? JSON.parse(res.value) : null;
+    } catch (e){
+      return null;
+    }
+  }
+
+  async function claimWin(name){
+    var current = await getWinner();
+    if (current) return current;
+    var payload = { name: name, time: Date.now() };
+    try {
+      await window.storage.set(WINNER_KEY, JSON.stringify(payload), true);
+    } catch (e){
+      return null;
+    }
+    var confirmed = await getWinner();
+    return confirmed || payload;
+  }
+
+  /* ============================================================
+     Screen state machine
+     ============================================================ */
+  var screens = {
+    landing: document.getElementById("screen-landing"),
+    game: document.getElementById("screen-game"),
+    result: document.getElementById("screen-result")
+  };
+  function showScreen(name){
+    Object.keys(screens).forEach(function(k){
+      screens[k].classList.toggle("active", k === name);
+    });
+  }
+
+  var playerName = "";
+  var gameOver = false;
+  var pollTimer = null;
+
+  function launchConfetti(){
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var colors = ["#FFC857","#FF6B6B","#4ECDC4","#B090FF"];
+    for (var i = 0; i < 60; i++){
+      var el = document.createElement("div");
+      el.className = "confetti";
+      el.style.left = (Math.random() * 100) + "vw";
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.animationDuration = (2.2 + Math.random() * 1.6) + "s";
+      el.style.animationDelay = (Math.random() * 0.6) + "s";
+      document.body.appendChild(el);
+      (function(node){ setTimeout(function(){ node.remove(); }, 4500); })(el);
+    }
+  }
+
+  function showWinResult(name, isSelf){
+    clearInterval(pollTimer);
+    document.getElementById("screen-result").classList.add("win");
+    document.getElementById("result-emoji").textContent = "🏆";
+    document.getElementById("result-title").textContent = isSelf ? "You found it!" : name + " found it!";
+    document.getElementById("result-sub").textContent = isSelf
+      ? "Nice eyes. Flag down the organizer to claim your prize."
+      : "This round is over — thanks for hunting.";
+    showScreen("result");
+    if (isSelf) launchConfetti();
+  }
+
+  function showAlreadyFound(name){
+    clearInterval(pollTimer);
+    document.getElementById("screen-result").classList.remove("win");
+    document.getElementById("result-emoji").textContent = "👀";
+    document.getElementById("result-title").textContent = "Already found";
+    document.getElementById("result-sub").textContent = name + " got there first. Thanks for hunting!";
+    showScreen("result");
+  }
+
+  async function onLogoActivate(){
+    if (gameOver) return;
+    gameOver = true;
+    document.getElementById("status-text").textContent = "Checking…";
+    var result = await claimWin(playerName);
+    if (!result){
+      showWinResult(playerName, true);
+      return;
+    }
+    if (result.name === playerName && result.time){
+      showWinResult(result.name, true);
+    } else {
+      showAlreadyFound(result.name);
+    }
+  }
+
+  async function startGame(){
+    var raw = document.getElementById("name-input").value.trim();
+    playerName = raw || "Anonymous player";
+    try { await window.storage.set("waldo:my-name", playerName, false); } catch(e){}
+
+    var existing = await getWinner();
+    if (existing){
+      showAlreadyFound(existing.name);
+      return;
+    }
+
+    showScreen("game");
+    gameOver = false;
+    document.getElementById("status-text").textContent = "Still hidden";
+
+    pollTimer = setInterval(async function(){
+      if (gameOver) return;
+      var w = await getWinner();
+      if (w){
+        gameOver = true;
+        showAlreadyFound(w.name);
+      }
+    }, 2000);
+  }
+
+  /* ============================================================
+     Wire up events
+     ============================================================ */
+  document.getElementById("start-btn").addEventListener("click", startGame);
+  document.getElementById("name-input").addEventListener("keydown", function(e){
+    if (e.key === "Enter") startGame();
+  });
+
+  buildScene();
+  document.getElementById("target-logo").addEventListener("click", onLogoActivate);
+  document.getElementById("target-logo").addEventListener("keydown", function(e){
+    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onLogoActivate(); }
+  });
+
+  /* Organizer panel */
+  var orgToggle = document.getElementById("organizer-toggle");
+  var orgPanel = document.getElementById("organizer-panel");
+  var qrInput = document.getElementById("qr-url-input");
+  var qrEl = document.getElementById("qrcode");
+  var qrInstance = null;
+
+  function renderQR(){
+    qrEl.innerHTML = "";
+    var url = qrInput.value.trim() || window.location.href;
+    try {
+      qrInstance = new QRCode(qrEl, { text: url, width: 200, height: 200 });
+    } catch(e){
+      qrEl.textContent = url;
+    }
+  }
+
+  orgToggle.addEventListener("click", function(){
+    qrInput.value = window.location.href;
+    orgPanel.classList.add("active");
+    renderQR();
+  });
+  document.getElementById("organizer-close").addEventListener("click", function(){
+    orgPanel.classList.remove("active");
+  });
+  document.getElementById("regen-qr-btn").addEventListener("click", renderQR);
+
+  document.getElementById("reset-btn").addEventListener("click", async function(){
+    if (!confirm("Clear the current winner and start a fresh round for everyone?")) return;
+    try { await window.storage.delete(WINNER_KEY, true); } catch(e){}
+    alert("Round reset. Refresh on participants' phones for a clean start.");
+  });
+
+})();
+</script>
+</body>
+</html>
