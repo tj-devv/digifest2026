@@ -276,8 +276,6 @@
         overflow: auto;
         -webkit-overflow-scrolling: touch;
         background: #0d0d0d;
-        display: flex;
-        justify-content: center;
         touch-action: pan-x pan-y pinch-zoom;
       }
       #scene-wrap svg {
@@ -566,9 +564,9 @@
       <div id="scene-wrap">
         <svg
           id="scene-svg"
-          width="1000"
+          width="1600"
           height="1500"
-          viewBox="0 0 1000 1500"
+          viewBox="0 0 1600 1500"
           role="img"
           aria-label="A busy scattered pattern of shapes. One hidden badge shape is the winning target."
         >
@@ -725,8 +723,10 @@
      CONFIG — organizers can tweak these before the event
      ============================================================ */
         var SEED = 1337; // fixed seed -> identical scene for every participant
-        var DECOY_COUNT = 240; // number of non-winning shapes
-        var LOGO_X = 418,
+        var SCENE_W = 1600,
+          SCENE_H = 1500; // canvas size — wider than most phone screens on purpose, forces horizontal scroll
+        var DECOY_COUNT = 380; // number of non-winning shapes
+        var LOGO_X = 669,
           LOGO_Y = 1122; // fixed position of the winning badge
         var LOGO_IMAGE_URL = ""; // set to a URL/data-URI of the real MTN badge to replace the placeholder shape
         var WINNER_KEY = "waldo/winner";
@@ -928,11 +928,12 @@
 
         function buildScene() {
           var svg = document.getElementById("scene-svg");
-          var W = 1000,
-            H = 1500;
+          var W = SCENE_W,
+            H = SCENE_H;
           var parts = [];
 
-          // soft background blobs for depth
+          // soft background blobs for depth (positioned proportionally so
+          // they still spread nicely across whatever SCENE_W/H is set to)
           parts.push(
             '<rect x="0" y="0" width="' +
               W +
@@ -941,13 +942,32 @@
               '" fill="#0D0D0D"/>',
           );
           parts.push(
-            '<circle cx="180" cy="260" r="260" fill="#1A1A1A" opacity="0.6"/>',
+            '<circle cx="' +
+              W * 0.18 +
+              '" cy="' +
+              H * 0.173 +
+              '" r="260" fill="#1A1A1A" opacity="0.6"/>',
           );
           parts.push(
-            '<circle cx="820" cy="1180" r="320" fill="#1A1A1A" opacity="0.6"/>',
+            '<circle cx="' +
+              W * 0.82 +
+              '" cy="' +
+              H * 0.787 +
+              '" r="320" fill="#1A1A1A" opacity="0.6"/>',
           );
           parts.push(
-            '<circle cx="760" cy="300" r="200" fill="#141400" opacity="0.5"/>',
+            '<circle cx="' +
+              W * 0.475 +
+              '" cy="' +
+              H * 0.2 +
+              '" r="200" fill="#141400" opacity="0.5"/>',
+          );
+          parts.push(
+            '<circle cx="' +
+              W * 0.95 +
+              '" cy="' +
+              H * 0.15 +
+              '" r="230" fill="#1A1A1A" opacity="0.5"/>',
           );
 
           // decoy shapes, deterministic via seeded PRNG
