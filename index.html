@@ -574,8 +574,7 @@
         </svg>
       </div>
       <div id="hint-bar">
-        Tip: the badge is a hexagon with a star inside — not just any shiny
-        shape.
+        Tip: look for the MTN DigiFest 2026 badge — not just any yellow shape.
       </div>
     </section>
 
@@ -728,7 +727,9 @@
         var DECOY_COUNT = 380; // number of non-winning shapes
         var LOGO_X = 669,
           LOGO_Y = 1122; // fixed position of the winning badge
-        var LOGO_IMAGE_URL = ""; // set to a URL/data-URI of the real MTN badge to replace the placeholder shape
+        var LOGO_ROTATION = 21; // tilt it off-axis so it doesn't pop out as the one upright shape
+        var LOGO_OPACITY = 0.82; // blend with the semi-transparent decoys around it
+        var LOGO_IMAGE_URL = "assets/badge.png"; // the real MTN badge to hunt for
         var WINNER_KEY = "waldo/winner";
         var ACTIVE_KEY = "waldo/active"; // shared "is hunting open" flag
         var COUNTDOWN_SECONDS = 5; // pause after activation before Start unlocks
@@ -975,8 +976,9 @@
           for (var i = 0; i < DECOY_COUNT; i++) {
             var cx = margin + rand() * (W - margin * 2);
             var cy = margin + rand() * (H - margin * 2);
-            // keep decoys away from the exact logo cell to reduce total overlap
-            if (Math.abs(cx - LOGO_X) < 55 && Math.abs(cy - LOGO_Y) < 55)
+            // keep a small gap right at the logo's center so decoys don't
+            // sit exactly on top of it, but let them crowd in close for camouflage
+            if (Math.abs(cx - LOGO_X) < 22 && Math.abs(cy - LOGO_Y) < 22)
               continue;
             var r = 10 + rand() * 20;
             var rot = rand() * 360;
@@ -992,23 +994,48 @@
           // ORGANIZER: once you have the real MTN badge image, just set
           // LOGO_IMAGE_URL above — no need to touch this markup. Until then it
           // falls back to a placeholder hex+star shape in MTN yellow/black.
-          var badgeMarkup = LOGO_IMAGE_URL
-            ? '<image href="' +
+          var hitAreaMarkup, badgeMarkup;
+          if (LOGO_IMAGE_URL) {
+            // smaller than a first pass at this — sized to the real badge's
+            // ~2.2:1 aspect ratio; hit-area rect stays generous for mobile
+            // tap forgiveness even though the visible image shrank
+            var imgW = 100,
+              imgH = 45;
+            hitAreaMarkup =
+              '<rect class="hit-area" x="-70" y="-37" width="140" height="74"/>';
+            badgeMarkup =
+              '<image href="' +
               LOGO_IMAGE_URL +
-              '" x="-30" y="-30" width="60" height="60"/>'
-            : '<polygon points="' +
+              '" x="' +
+              -imgW / 2 +
+              '" y="' +
+              -imgH / 2 +
+              '" width="' +
+              imgW +
+              '" height="' +
+              imgH +
+              '" opacity="' +
+              LOGO_OPACITY +
+              '"/>';
+          } else {
+            hitAreaMarkup = '<circle class="hit-area" cx="0" cy="0" r="34"/>';
+            badgeMarkup =
+              '<polygon points="' +
               hexPoints(0, 0, 26) +
               '" fill="#FFCC00" stroke="#0D0D0D" stroke-width="3"/>' +
               '<polygon points="' +
               starPoints(0, 0, 13) +
               '" fill="#0D0D0D"/>';
+          }
           var logo =
             '<g id="target-logo" tabindex="0" role="button" aria-label="Hidden badge — tap to claim the win" transform="translate(' +
             LOGO_X +
             "," +
             LOGO_Y +
+            ") rotate(" +
+            LOGO_ROTATION +
             ')">' +
-            '<circle class="hit-area" cx="0" cy="0" r="34"/>' +
+            hitAreaMarkup +
             badgeMarkup +
             "</g>";
           svg.insertAdjacentHTML("beforeend", logo);

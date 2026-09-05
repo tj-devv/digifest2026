@@ -1,0 +1,12 @@
+{
+  "name": "find-the-badge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MTN Find the Badge - static single-page scavenger hunt game",
+  "scripts": {
+    "start": "serve -s . -l $PORT"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}
