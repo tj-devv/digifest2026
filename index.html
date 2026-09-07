@@ -782,7 +782,10 @@
           var prng = mulberry32(seed >>> 0);
           return {
             x: Math.round(140 + prng() * (SCENE_W - 280)),
-            y: Math.round(160 + prng() * (SCENE_H - 320)),
+            // y starts well below the fold — the game screen always opens
+            // scrolled to the top, so anything near y=0 would be the very
+            // first thing a player sees, no searching required
+            y: Math.round(600 + prng() * (SCENE_H - 750)),
           };
         }
 
@@ -1423,12 +1426,24 @@
             )
               return;
             try {
-              await winnerRef.remove();
-              await roundRef.set(Date.now());
-            } catch (e) {}
-            alert(
-              "Round reset and badge moved to a new spot. Refresh on participants' phones for a clean start.",
-            );
+              // atomic multi-path update: if either write is rejected (e.g.
+              // Firebase Rules missing the "round" path), NEITHER applies —
+              // that surfaces the problem immediately instead of silently
+              // clearing the winner while leaving the badge in place
+              var updates = {};
+              updates[WINNER_KEY] = null;
+              updates[ROUND_KEY] = Date.now();
+              await db.ref().update(updates);
+              alert(
+                "Round reset and badge moved to a new spot. Refresh on participants' phones for a clean start.",
+              );
+            } catch (e) {
+              alert(
+                "Reset failed: " +
+                  (e && e.message ? e.message : e) +
+                  '\n\nCheck your Firebase Realtime Database rules allow writes to both "winner" and "round" — see README.md.',
+              );
+            }
           });
       })();
     </script>
