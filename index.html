@@ -689,6 +689,9 @@
         <div id="qrcode"></div>
         <div class="row">
           <button class="btn secondary" id="regen-qr-btn">Update QR</button>
+          <button class="btn secondary" id="download-qr-btn">
+            Download QR
+          </button>
         </div>
 
         <label>Hunt availability</label>
@@ -724,7 +727,7 @@
         var SEED = 1337; // fixed seed -> identical scene for every participant
         var SCENE_W = 1600,
           SCENE_H = 1500; // canvas size — wider than most phone screens on purpose, forces horizontal scroll
-        var DECOY_COUNT = 380; // number of non-winning shapes
+        var DECOY_COUNT = 1600; // number of non-winning shapes — dense, Where's-Waldo-busy
         var LOGO_X = 669,
           LOGO_Y = 1122; // fixed position of the winning badge
         var LOGO_ROTATION = 21; // tilt it off-axis so it doesn't pop out as the one upright shape
@@ -980,10 +983,10 @@
             // sit exactly on top of it, but let them crowd in close for camouflage
             if (Math.abs(cx - LOGO_X) < 22 && Math.abs(cy - LOGO_Y) < 22)
               continue;
-            var r = 10 + rand() * 20;
+            var r = 6 + rand() * 14; // smaller shapes pack tighter without any one dominating
             var rot = rand() * 360;
             var color = PALETTE[Math.floor(rand() * PALETTE.length)];
-            var opacity = (0.5 + rand() * 0.5).toFixed(2);
+            var opacity = (0.4 + rand() * 0.6).toFixed(2);
             var kind = Math.floor(rand() * 6);
             parts.push(decoyMarkup(cx, cy, r, rot, color, opacity, kind));
           }
@@ -1348,6 +1351,28 @@
         document
           .getElementById("regen-qr-btn")
           .addEventListener("click", renderQR);
+
+        document
+          .getElementById("download-qr-btn")
+          .addEventListener("click", function () {
+            var canvas = qrEl.querySelector("canvas");
+            var img = qrEl.querySelector("img");
+            var dataUrl = canvas
+              ? canvas.toDataURL("image/png")
+              : img
+                ? img.src
+                : null;
+            if (!dataUrl) {
+              alert("Generate the QR code first.");
+              return;
+            }
+            var a = document.createElement("a");
+            a.href = dataUrl;
+            a.download = "find-the-badge-qr.png";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+          });
 
         document
           .getElementById("toggle-active-btn")
