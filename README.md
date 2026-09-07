@@ -23,12 +23,18 @@ The shared "who found it first" state lives in a free Firebase Realtime Database
          "active": {
            ".read": true,
            ".write": true
+         },
+         "round": {
+           ".read": true,
+           ".write": true
          }
        }
      }
    }
    ```
-   (If you set the database up before the hunt on/off toggle existed, go back to the Rules tab and add the `"active"` block — it isn't there by default.)
+   (If you set the database up before the hunt on/off toggle or the per-round badge
+   relocation existed, go back to the Rules tab and add the `"active"` / `"round"`
+   blocks — they aren't there by default on an older setup.)
 4. Go to **Project settings > General**, scroll to "Your apps", click the `</>` (web) icon, register an app (no Firebase Hosting needed), and copy the `firebaseConfig` object it gives you.
 5. Open `index.html`, find `FIREBASE_CONFIG` near the top of the `<script>` block, and paste in your `apiKey`, `databaseURL`, and `projectId`.
 
@@ -46,8 +52,11 @@ The shared "who found it first" state lives in a free Firebase Realtime Database
 
 ## Customizing
 
-- `SEED`, `DECOY_COUNT`, `LOGO_X`, `LOGO_Y` near the top of the `<script>` block
-  control the scene layout and badge position.
+- `SEED` and `DECOY_COUNT` near the top of the `<script>` block control the
+  scene layout/density. `LOGO_X`/`LOGO_Y` are only the fallback position used
+  before any round has ever been reset — in normal use the badge's actual spot
+  is derived from a shared `round` seed in Firebase (see below), so it moves
+  on every reset instead of staying fixed.
 - `LOGO_IMAGE_URL` — once you have the real MTN badge artwork, set this to its
   URL (or a `data:` URI) and it automatically replaces the placeholder hex+star
   shape at the same position, keeping the same tap-forgiveness hit area. Leave
@@ -71,7 +80,9 @@ From the panel you can:
   synchronized countdown (`COUNTDOWN_SECONDS` near the top of the `<script>`
   block, default 5s) before the Start button unlocks, based on a shared
   server timestamp rather than each phone's own clock
-- Reset the round (clears the shared winner in Firebase so you can run another heat)
+- Reset the round — clears the shared winner **and** moves the badge to a new
+  random spot (same spot for everyone, derived from a shared seed), so
+  returning players can't just remember where it was last heat
 
 Note on security: the passcode is a deterrent for casual attendees, not real
 authentication — it lives in the page's source, so anyone who views source can

@@ -729,12 +729,13 @@
           SCENE_H = 1500; // canvas size — wider than most phone screens on purpose, forces horizontal scroll
         var DECOY_COUNT = 1600; // number of non-winning shapes — dense, Where's-Waldo-busy
         var LOGO_X = 669,
-          LOGO_Y = 1122; // fixed position of the winning badge
+          LOGO_Y = 1122; // default position — overwritten per-round by positionForRound()
         var LOGO_ROTATION = 21; // tilt it off-axis so it doesn't pop out as the one upright shape
         var LOGO_OPACITY = 0.82; // blend with the semi-transparent decoys around it
         var LOGO_IMAGE_URL = "assets/badge.png"; // the real MTN badge to hunt for
         var WINNER_KEY = "waldo/winner";
         var ACTIVE_KEY = "waldo/active"; // shared "is hunting open" flag
+        var ROUND_KEY = "waldo/round"; // shared seed that picks the badge's spot each round
         var COUNTDOWN_SECONDS = 5; // pause after activation before Start unlocks
         var ADMIN_PASSCODE = "mtn2026"; // ORGANIZER: change this before the event
         var ADMIN_SESSION_KEY = "waldo:admin-ok";
@@ -773,6 +774,17 @@
           };
         }
         var rand = mulberry32(SEED);
+
+        // Derives a badge position from the shared round seed — same seed
+        // always gives the same spot, so every participant sees the badge
+        // in the same place, but a new seed (written on reset) moves it.
+        function positionForRound(seed) {
+          var prng = mulberry32(seed >>> 0);
+          return {
+            x: Math.round(140 + prng() * (SCENE_W - 280)),
+            y: Math.round(160 + prng() * (SCENE_H - 320)),
+          };
+        }
 
         /* ============================================================
      Shape drawing helpers (all return SVG markup strings)
@@ -1092,6 +1104,7 @@
         var gameOver = false;
         var winnerRef = db.ref(WINNER_KEY);
         var activeRef = db.ref(ACTIVE_KEY);
+        var roundRef = db.ref(ROUND_KEY);
         var huntActive = true; // optimistic default until Firebase reports otherwise
 
         function launchConfetti() {
@@ -1282,18 +1295,29 @@
             if (e.key === "Enter") startGame();
           });
 
-        buildScene();
-        document
-          .getElementById("target-logo")
-          .addEventListener("click", onLogoActivate);
-        document
-          .getElementById("target-logo")
-          .addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onLogoActivate();
-            }
-          });
+        (async function initScene() {
+          var roundSeed = SEED; // fallback: default spot if Firebase read fails or nothing's been set yet
+          try {
+            var snap = await roundRef.get();
+            if (snap.exists()) roundSeed = Number(snap.val()) || SEED;
+          } catch (e) {}
+          var pos = positionForRound(roundSeed);
+          LOGO_X = pos.x;
+          LOGO_Y = pos.y;
+
+          buildScene();
+          document
+            .getElementById("target-logo")
+            .addEventListener("click", onLogoActivate);
+          document
+            .getElementById("target-logo")
+            .addEventListener("keydown", function (e) {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onLogoActivate();
+              }
+            });
+        })();
 
         /* Organizer panel */
         var orgToggle = document.getElementById("organizer-toggle");
@@ -1400,9 +1424,10 @@
               return;
             try {
               await winnerRef.remove();
+              await roundRef.set(Date.now());
             } catch (e) {}
             alert(
-              "Round reset. Refresh on participants' phones for a clean start.",
+              "Round reset and badge moved to a new spot. Refresh on participants' phones for a clean start.",
             );
           });
       })();
